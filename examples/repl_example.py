@@ -1,13 +1,14 @@
-import os
 import IPython
+import os
+
 import pyverilator
 
 # setup build directory and cd to it
-build_dir = os.path.join(os.path.dirname(__file__), 'build', os.path.basename(__file__))
-os.makedirs(build_dir, exist_ok = True)
+build_dir = os.path.join(os.path.dirname(__file__), "build", os.path.basename(__file__))
+os.makedirs(build_dir, exist_ok=True)
 os.chdir(build_dir)
 
-test_verilog = '''
+test_verilog = """
     module pipelined_mac (
             clk,
             rst_n,
@@ -70,11 +71,11 @@ test_verilog = '''
         end
 
         assign out = accumulator;
-    endmodule'''
+    endmodule"""
 # write test verilog file
-with open('pipelined_mac.v', 'w') as f:
+with open("pipelined_mac.v", "w") as f:
     f.write(test_verilog)
-sim = pyverilator.PyVerilator.build('pipelined_mac.v')
+sim = pyverilator.PyVerilator.build("pipelined_mac.v")
 
 sim.start_gtkwave()
 
@@ -85,7 +86,7 @@ sim.start_gtkwave()
 #        sim.io[signal].send_to_gtkwave()
 # 4) sim.send_to_gtkwave( sim.io )
 
-sim.send_to_gtkwave( sim.io )
+sim.send_to_gtkwave(sim.io)
 
 sim.io.rst_n = 0
 sim.clock.tick()

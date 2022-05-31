@@ -1,12 +1,13 @@
 import os
+
 import pyverilator
 
 # setup build directory and cd to it
-build_dir = os.path.join(os.path.dirname(__file__), 'build', os.path.basename(__file__))
-os.makedirs(build_dir, exist_ok = True)
+build_dir = os.path.join(os.path.dirname(__file__), "build", os.path.basename(__file__))
+os.makedirs(build_dir, exist_ok=True)
 os.chdir(build_dir)
 
-test_verilog = '''
+test_verilog = """
     module parent_module (
             clk,
             rst,
@@ -37,11 +38,11 @@ test_verilog = '''
                 out_reg <= child_2_out;
             end
         end
-    endmodule'''
-with open('parent_module.v', 'w') as f:
+    endmodule"""
+with open("parent_module.v", "w") as f:
     f.write(test_verilog)
 
-test_verilog = '''
+test_verilog = """
     module child_module (
             clk,
             rst,
@@ -66,11 +67,11 @@ test_verilog = '''
                 out_reg <= in_reg + 1;
             end
         end
-    endmodule'''
-with open('child_module.v', 'w') as f:
+    endmodule"""
+with open("child_module.v", "w") as f:
     f.write(test_verilog)
 
-sim = pyverilator.PyVerilator.build('parent_module.v')
+sim = pyverilator.PyVerilator.build("parent_module.v")
 
 sim.io.rst = 1
 sim.io.clk = 0
@@ -78,16 +79,21 @@ sim.io.clk = 1
 sim.io.rst = 0
 
 # in is a reserved keyword :(
-sim.io['in'] = 7
+sim.io["in"] = 7
 
 sim.clock.tick()
 sim.clock.tick()
 sim.clock.tick()
 
-collections = ['sim.io', 'sim.internals', 'sim.internals.child_1', 'sim.internals.child_2']
+collections = [
+    "sim.io",
+    "sim.internals",
+    "sim.internals.child_1",
+    "sim.internals.child_2",
+]
 
-print('')
+print("")
 for collection in collections:
-    print('>> ' + collection)
-    print(eval('repr(' + collection + ')'))
-    print('')
+    print(">> " + collection)
+    print(eval("repr(" + collection + ")"))
+    print("")

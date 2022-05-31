@@ -27,9 +27,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
-from pyverilator import PyVerilator
 import pkg_resources as pk
+
+import os
+
+from pyverilator import PyVerilator
 
 axilite_expected_signals = [
     "AWVALID",
@@ -99,13 +101,14 @@ aximm_expected_signals = [
     "BUSER",
 ]
 
+
 def rtlsim_multi_io(
-    sim, 
-    io_dict, 
-    num_out_values, 
-    trace_file="", 
-    sname="_V_V_", 
-    liveness_threshold=10000, 
+    sim,
+    io_dict,
+    num_out_values,
+    trace_file="",
+    sname="_V_V_",
+    liveness_threshold=10000,
     hook_preclk=None,
     hook_postclk=None,
 ):
@@ -128,7 +131,7 @@ def rtlsim_multi_io(
       finish the simulation and return.
     * trace_file: vcd dump filename, empty string (no vcd dump) by default
     * sname: signal naming for streams, "_V_V_" by default, vitis_hls uses "_V_"
-    * liveness_threshold: if no new output is detected after this many cycles, 
+    * liveness_threshold: if no new output is detected after this many cycles,
       terminate simulation
     * hook_preclk: hook function to call prior to clock tick
     * hook_postclk: hook function to call after clock tick
@@ -158,22 +161,14 @@ def rtlsim_multi_io(
         for inp in io_dict["inputs"]:
             inputs = io_dict["inputs"][inp]
             _write_signal(sim, inp + sname + "TVALID", 1 if len(inputs) > 0 else 0)
-            _write_signal(
-                sim, inp + sname + "TDATA", inputs[0] if len(inputs) > 0 else 0
-            )
-            if (
-                _read_signal(sim, inp + sname + "TREADY") == 1
-                and _read_signal(sim, inp + sname + "TVALID") == 1
-            ):
+            _write_signal(sim, inp + sname + "TDATA", inputs[0] if len(inputs) > 0 else 0)
+            if _read_signal(sim, inp + sname + "TREADY") == 1 and _read_signal(sim, inp + sname + "TVALID") == 1:
                 inputs = inputs[1:]
             io_dict["inputs"][inp] = inputs
 
         for outp in io_dict["outputs"]:
             outputs = io_dict["outputs"][outp]
-            if (
-                _read_signal(sim, outp + sname + "TREADY") == 1
-                and _read_signal(sim, outp + sname + "TVALID") == 1
-            ):
+            if _read_signal(sim, outp + sname + "TREADY") == 1 and _read_signal(sim, outp + sname + "TVALID") == 1:
                 outputs = outputs + [_read_signal(sim, outp + sname + "TDATA")]
                 output_count += 1
             io_dict["outputs"][outp] = outputs
@@ -351,10 +346,7 @@ def wait_for_handshake(sim, ifname, basename="s_axi_control_", dataname="DATA"):
     """
     ret = None
     while 1:
-        hs = (
-            _read_signal(sim, basename + ifname + "READY") == 1
-            and _read_signal(sim, basename + ifname + "VALID") == 1
-        )
+        hs = _read_signal(sim, basename + ifname + "READY") == 1 and _read_signal(sim, basename + ifname + "VALID") == 1
         try:
             ret = _read_signal(sim, basename + ifname + dataname)
         except Exception:
@@ -374,10 +366,7 @@ def multi_handshake(sim, ifnames, basename="s_axi_control_"):
         _write_signal(sim, basename + ifname + "VALID", 1)
     while len(ifnames) > 0:
         for ifname in ifnames:
-            if (
-                _read_signal(sim, basename + ifname + "READY") == 1
-                and _read_signal(sim, basename + ifname + "VALID") == 1
-            ):
+            if _read_signal(sim, basename + ifname + "READY") == 1 and _read_signal(sim, basename + ifname + "VALID") == 1:
                 done.append(ifname)
         toggle_clk(sim)
         for ifname in done:
@@ -386,9 +375,7 @@ def multi_handshake(sim, ifnames, basename="s_axi_control_"):
             _write_signal(sim, basename + ifname + "VALID", 0)
 
 
-def axilite_write(
-    sim, addr, val, basename="s_axi_control_", wstrb=0xF, sim_addr_and_data=True
-):
+def axilite_write(sim, addr, val, basename="s_axi_control_", wstrb=0xF, sim_addr_and_data=True):
     """Write val to addr on AXI lite interface given by basename.
 
     Arguments:
@@ -442,9 +429,8 @@ def axilite_read(sim, addr, basename="s_axi_control_"):
     _write_signal(sim, basename + "RREADY", 0)
     return ret_data
 
-def create_axi_mem_hook(
-    ref_sim, aximm_ifname, mem_depth, mem_init_file="", trace_file=""
-):
+
+def create_axi_mem_hook(ref_sim, aximm_ifname, mem_depth, mem_init_file="", trace_file=""):
     """Create and return a pair of (pre_hook, post_hook) functions to serve
     as an AXI slave memory on the AXI MM master interface with given name."""
     # find the AXI-MM master interface with given name and extract interface widths
@@ -476,9 +462,7 @@ def create_axi_mem_hook(
         if ref_sim.io[aximm_ifname + signal_name].signal.__class__.__name__ == "Output":
             if (aximem_ifname + signal_name).lower() in aximem_sim.io:
                 master_to_slave.append(signal_name)
-        elif (
-            ref_sim.io[aximm_ifname + signal_name].signal.__class__.__name__ == "Input"
-        ):
+        elif ref_sim.io[aximm_ifname + signal_name].signal.__class__.__name__ == "Input":
             if (aximem_ifname + signal_name).lower() in aximem_sim.io:
                 slave_to_master.append(signal_name)
         else:
@@ -505,9 +489,7 @@ def create_axi_mem_hook(
         toggle_clk(aximem_sim, clk_name="clk")
         # copy all AXI slave outputs to AXI master inputs
         for signal_name in slave_to_master:
-            sim.io[aximm_ifname + signal_name] = _read_signal(
-                aximem_sim, aximem_ifname + signal_name
-            )
+            sim.io[aximm_ifname + signal_name] = _read_signal(aximem_sim, aximem_ifname + signal_name)
         if trace_file != "":
             aximem_sim.flush_vcd_trace()
 

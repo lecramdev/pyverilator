@@ -3,7 +3,9 @@ def header_cpp(top_module):
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 #include "{module_filename}.h"
-    """.format(module_filename='V' + top_module)
+    """.format(
+        module_filename="V" + top_module
+    )
     return s
 
 
@@ -43,7 +45,7 @@ const char* _pyverilator_json_data = {json_data};
 // main_time is incremented in eval
 double main_time = 0;
     """.format(
-        top_module = top_module,
+        top_module=top_module,
         nb_inputs=len(inputs),
         name_inputs=",".join(map(lambda input: '"' + input[0] + '"', inputs)),
         size_inputs=",".join(map(lambda input: str(input[1]), inputs)),
@@ -53,7 +55,8 @@ double main_time = 0;
         nb_internals=len(internal_signals),
         name_internals=",".join(map(lambda internal: '"' + internal[0] + '"', internal_signals)),
         size_internals=",".join(map(lambda internal: str(internal[1]), internal_signals)),
-        json_data=json_data if json_data else "null")
+        json_data=json_data if json_data else "null",
+    )
     return s
 
 
@@ -99,28 +102,49 @@ int flush_vcd_trace(VerilatedVcdC* tfp) {{
 int stop_vcd_trace(VerilatedVcdC* tfp) {{
     tfp->close();
     return 0;
-}}""".format(module_filename='V' + top_module)
-    get_functions = "\n".join(map(lambda port: (
-        "uint32_t get_{portname}({module_filename}* top, int word)"
-        "{{ return top->{portname}[word];}}" if port[1] > 64 else (
-            "uint64_t get_{portname}({module_filename}* top)"
-            "{{return top->{portname};}}" if port[1] > 32 else
-            "uint32_t get_{portname}({module_filename}* top)"
-            "{{return top->{portname};}}")).format(module_filename='V' + top_module, portname=port[0]),
-                                  outputs + inputs + internal_signals))
-    set_functions = "\n".join(map(lambda port: (
-        "int set_{portname}({module_filename}* top, int word, uint64_t new_value)"
-        "{{ top->{portname}[word] = new_value; return 0;}}" if port[1] > 64 else (
-            "int set_{portname}({module_filename}* top, uint64_t new_value)"
-            "{{ top->{portname} = new_value; return 0;}}" if port[1] > 32 else
-            "int set_{portname}({module_filename}* top, uint32_t new_value)"
-            "{{ top->{portname} = new_value; return 0;}}")).format(module_filename='V' + top_module, portname=port[0])
-                                  , inputs))
+}}""".format(
+        module_filename="V" + top_module
+    )
+    get_functions = "\n".join(
+        map(
+            lambda port: (
+                "uint32_t get_{portname}({module_filename}* top, int word)" "{{ return top->{portname}[word];}}"
+                if port[1] > 64
+                else (
+                    "uint64_t get_{portname}({module_filename}* top)" "{{return top->{portname};}}"
+                    if port[1] > 32
+                    else "uint32_t get_{portname}({module_filename}* top)" "{{return top->{portname};}}"
+                )
+            ).format(module_filename="V" + top_module, portname=port[0]),
+            outputs + inputs + internal_signals,
+        )
+    )
+    set_functions = "\n".join(
+        map(
+            lambda port: (
+                "int set_{portname}({module_filename}* top, int word, uint64_t new_value)"
+                "{{ top->{portname}[word] = new_value; return 0;}}"
+                if port[1] > 64
+                else (
+                    "int set_{portname}({module_filename}* top, uint64_t new_value)"
+                    "{{ top->{portname} = new_value; return 0;}}"
+                    if port[1] > 32
+                    else "int set_{portname}({module_filename}* top, uint32_t new_value)"
+                    "{{ top->{portname} = new_value; return 0;}}"
+                )
+            ).format(module_filename="V" + top_module, portname=port[0]),
+            inputs,
+        )
+    )
     footer = "}"
     return "\n".join([constant_part, get_functions, set_functions, footer])
 
 
 def template_cpp(top_module, inputs, outputs, internal_signals, json_data):
-    return "\n".join([header_cpp(top_module),
-                      var_declaration_cpp(top_module, inputs, outputs, internal_signals, json_data),
-                      function_definitions_cpp(top_module, inputs, outputs, internal_signals, json_data)])
+    return "\n".join(
+        [
+            header_cpp(top_module),
+            var_declaration_cpp(top_module, inputs, outputs, internal_signals, json_data),
+            function_definitions_cpp(top_module, inputs, outputs, internal_signals, json_data),
+        ]
+    )

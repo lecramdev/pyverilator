@@ -1,3 +1,3 @@
-from .pyverilator import PyVerilator, Collection, Submodule, Signal, Output, InternalSignal, Input, Clock
+from .pyverilator import Clock, Collection, Input, InternalSignal, Output, PyVerilator, Signal, Submodule  # noqa
 
 name = "PyVerilator"

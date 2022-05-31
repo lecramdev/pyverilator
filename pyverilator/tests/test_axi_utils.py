@@ -26,10 +26,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import numpy as np
 import pkg_resources as pk
-from pyverilator import PyVerilator
 
+import numpy as np
+
+from pyverilator import PyVerilator
 from pyverilator.util.axi_utils import (
     axilite_expected_signals,
     axilite_read,
@@ -39,6 +40,7 @@ from pyverilator.util.axi_utils import (
     reset_rtlsim,
     rtlsim_multi_io,
 )
+
 
 def test_pyverilator_axilite():
     example_root = pk.resource_filename("pyverilator.data", "verilog/myadd")
@@ -87,6 +89,7 @@ def test_pyverilator_axilite():
     val_ret = axilite_read(sim, addr_return)
     assert val_ret == val_a + val_b
 
+
 def test_pyverilator_aximm():
     example_root = pk.resource_filename("pyverilator.data", "verilog/lookup")
     # load example verilog: takes two 32-bit integers as AXI lite mem mapped
@@ -128,14 +131,12 @@ def test_pyverilator_aximm():
     mem_data = np.random.randint(0, 256, size=(lookup_depth, lookup_width))
     mem_data = np.pad(mem_data, [(0, 0), (0, lookup_padded_width - lookup_width)])
     mem_data = mem_data.reshape(-1, memif_width)
-    mem_init_file="/tmp/mem_init.dat"
+    mem_init_file = "/tmp/mem_init.dat"
     np.savetxt(mem_init_file, mem_data, fmt="%02X", delimiter="")
     with open(mem_init_file, "r") as f:
-        mem_data_hex=f.read()
-    mem_data_hex=np.asarray(mem_data_hex.strip().split("\n"))
-    mem_data_hex = mem_data_hex.reshape(
-        lookup_depth, lookup_padded_width // memif_width
-    )
+        mem_data_hex = f.read()
+    mem_data_hex = np.asarray(mem_data_hex.strip().split("\n"))
+    mem_data_hex = mem_data_hex.reshape(lookup_depth, lookup_padded_width // memif_width)
     aximm_mem_depth = mem_data.shape[0]
     (sim_hook_axi_mem_preclk, sim_hook_axi_mem_postclk) = create_axi_mem_hook(
         sim, aximm_ifname, aximm_mem_depth, mem_init_file=mem_init_file
@@ -155,8 +156,6 @@ def test_pyverilator_aximm():
     outputs = np.asarray(io_dict["outputs"]["out"]).reshape(num_in_values, -1)
     for inp_num in range(num_in_values):
         inp = inputs[inp_num]
-        golden = [
-            int(x, base=16) for x in mem_data_hex[inp][: lookup_width // memif_width]
-        ]
+        golden = [int(x, base=16) for x in mem_data_hex[inp][: lookup_width // memif_width]]
         produced = outputs[inp_num]
         assert all(golden == produced)
