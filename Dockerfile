@@ -12,4 +12,4 @@ RUN pip install pytest-xdist[psutil]
 RUN pip install numpy
 
 COPY . .
-RUN pip install -e .
+RUN pip install .
