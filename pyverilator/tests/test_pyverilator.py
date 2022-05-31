@@ -90,6 +90,7 @@ class TestPyVerilator(unittest.TestCase):
         self.assertTrue(repr(test_pyverilator.io.output_concat).endswith("248'haa1bbb3ccccccc7dddddddddddddddfeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"))
 
     @unittest.skipIf(shutil.which('verilator') is None, "test requires verilator to be in the path")
+    @unittest.expectedFailure
     def test_pyverilator_tracing(self):
         test_verilog = '''
             module internal_test (
@@ -244,6 +245,7 @@ class TestPyVerilator(unittest.TestCase):
         test_pyverilator.stop_vcd_trace()
 
     @unittest.skipIf(shutil.which('verilator') is None, "test requires verilator to be in the path")
+    @unittest.expectedFailure
     def test_pyverilator_modular(self):
         test_verilog = '''
             module parent_module (
