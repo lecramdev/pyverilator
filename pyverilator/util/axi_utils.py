@@ -29,7 +29,7 @@
 
 import os
 from pyverilator import PyVerilator
-
+import pkg_resources as pk
 
 axilite_expected_signals = [
     "AWVALID",
@@ -317,15 +317,15 @@ def _write_signal(sim, signal_name, signal_value):
     sim.io[signal_name] = signal_value
 
 
-def reset_rtlsim(sim, rst_name="ap_rst_n", active_low=True):
+def reset_rtlsim(sim, rst_name="ap_rst_n", active_low=True, clk_name="ap_clk"):
     """Sets reset input in pyverilator to zero, toggles the clock and set it
     back to one"""
     _write_signal(sim, rst_name, 0 if active_low else 1)
-    toggle_clk(sim)
-    toggle_clk(sim)
+    toggle_clk(sim, clk_name=clk_name)
+    toggle_clk(sim, clk_name=clk_name)
     _write_signal(sim, rst_name, 1 if active_low else 0)
-    toggle_clk(sim)
-    toggle_clk(sim)
+    toggle_clk(sim, clk_name=clk_name)
+    toggle_clk(sim, clk_name=clk_name)
 
 
 def toggle_clk(sim, clk_name="ap_clk"):
@@ -453,7 +453,7 @@ def create_axi_mem_hook(
     addr_width = ref_sim.io[aximm_ifname + "ARADDR"].signal.width
     strb_width = int(data_width / 8)
     # create pyverilator sim object for AXI memory
-    example_root = pk.resource_filename("finn.data", "verilog/verilog-axi")
+    example_root = pk.resource_filename("pyverilator.data", "verilog/verilog-axi")
     aximem_sim = PyVerilator.build(
         "axi_ram.v",
         verilog_path=[example_root],
