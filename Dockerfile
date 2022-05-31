@@ -11,4 +11,4 @@ RUN pip install pytest
 RUN pip install pytest-xdist[psutil]
 
 COPY . .
-RUN pip install .
+RUN pip install -e .
