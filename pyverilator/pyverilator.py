@@ -525,6 +525,8 @@ class PyVerilator:
             )
             if result:
                 signal_name = result.group(2)
+                # sometime after verilator 4.012, these declarations contain &s
+                signal_name = signal_name.replace("&", "")
                 if signal_type == "SIG":
                     if "[" not in signal_name and int(result.group(4)) == 0:
                         # this is an internal signal
