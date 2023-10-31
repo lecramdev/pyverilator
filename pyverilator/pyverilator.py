@@ -441,7 +441,6 @@ class PyVerilator:
         # verilator can't find memory files unless they are in the cwd
         # so switch to where the top verilog is
         # (assuming the mem .dat files are also there...)
-        import pdb; pdb.set_trace()
         if not isinstance(top_verilog_file, list):
             top_verilog_dir = os.path.dirname(os.path.realpath(top_verilog_file))
         else:
