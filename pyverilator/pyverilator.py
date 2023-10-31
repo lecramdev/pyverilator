@@ -596,6 +596,11 @@ class PyVerilator:
         return ret
 
     def __init__(self, so_file, auto_eval=True, builddir_to_remove=None):
+        # set cwd to where the .so file is during init to find *.dat files
+        # in the same directory
+        so_dir = os.path.dirname(os.path.realpath(so_file))
+        old_cwd = os.getcwd()
+        os.chdir(so_dir)
         self.builddir_to_remove = builddir_to_remove
         # initialize lib and model first so if __init__ fails, __del__ will
         # not fail.
@@ -631,6 +636,7 @@ class PyVerilator:
                 if "clock" in sig_name or "clk" in sig_name:
                     self.clock = Clock(self.io[sig_name].signal)
                     break
+        os.chdir(old_cwd)
 
     def __del__(self):
         if self.model is not None:
