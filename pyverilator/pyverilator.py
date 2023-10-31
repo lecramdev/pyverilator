@@ -441,6 +441,7 @@ class PyVerilator:
         # verilator can't find memory files unless they are in the cwd
         # so switch to where the top verilog is
         # (assuming the mem .dat files are also there...)
+        import pdb; pdb.set_trace()
         if not isinstance(top_verilog_file, list):
             top_verilog_dir = os.path.dirname(os.path.realpath(top_verilog_file))
         else:
@@ -464,11 +465,8 @@ class PyVerilator:
         if top_module_name is None and extension != ".v":
             raise ValueError("PyVerilator() expects top_verilog_file to be a verilog file ending in .v")
 
-        # prepare the path for the C++ wrapper file, ensure no old files remain
-        # to avoid errors due to recompiling same module with different config
-        if os.path.exists(build_dir):
-            shutil.rmtree(build_dir)
-        os.makedirs(build_dir)
+        if not os.path.exists(build_dir):
+            os.makedirs(build_dir)        
         verilator_cpp_wrapper_path = os.path.join(build_dir, "pyverilator_wrapper.cpp")
 
         # call verilator executable to generate the verilator C++ files
