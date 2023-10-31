@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 from keyword import iskeyword
+import warnings
 
 import pyverilator.verilatorcpp as template_cpp
 
@@ -438,13 +439,21 @@ class PyVerilator:
 
         gen_only stops the process before compiling the cpp into object.
         """
-        # verilator can't find memory files unless they are in the cwd
-        # so switch to where the top verilog is
-        # (assuming the mem .dat files are also there...)
-        if not isinstance(top_verilog_file, list):
+        # verilator can't find memory init .dat files unless they are in the cwd
+        # so switch to where those are, based on the following sequence of rules:
+        if not isinstance(top_verilog_file, list) and os.path.isabs(top_verilog_file):
+            # if the top_verilog_file is specified with absolute path, use its parent directory
             top_verilog_dir = os.path.dirname(os.path.realpath(top_verilog_file))
-        else:
+        elif len(verilog_path) > 0:
+            # if the verilog_path arg is specified, use the first dir there
             top_verilog_dir = verilog_path[0]
+        elif build_dir is not None:
+            # if a build dir is specified, use that
+            top_verilog_dir = build_dir
+        else:
+            # if all fails, use the existing working dir
+            top_verilog_dir = os.getcwd()
+            warnings.warn("Could not determine a top-level directory for project, memory initialization .dat files may not be found")
 
         old_cwd = os.getcwd()
         os.chdir(top_verilog_dir)
