@@ -172,8 +172,7 @@ def rtlsim_multi_io(
             hook_preclk(sim)
         
         # Toggle half a clock to get to rising edge
-        _write_signal(sim, "ap_clk", 0)
-        sim.eval()
+        toggle_neg_edge(sim)
         # Check for whether handshake will occur
         for inp in io_dict["inputs"]:
             inputs = io_dict["inputs"][inp]
@@ -181,8 +180,8 @@ def rtlsim_multi_io(
             if _read_signal(sim, inp + sname + "TREADY") == 1 and _read_signal(sim, inp + sname + "TVALID") == 1:
                 inputs = inputs[1:]
             io_dict["inputs"][inp] = inputs
-        _write_signal(sim, "ap_clk", 1)
-        sim.eval()
+        # Toggle half a clock to get to falling edge
+        toggle_pos_edge(sim)
         
         if hook_postclk:
             hook_postclk(sim)
@@ -254,6 +253,32 @@ def toggle_clk(sim, clk_name="ap_clk"):
     sim.eval()
     _write_signal(sim, clk_name, 1)
     sim.eval()
+
+
+def toggle_neg_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
+    """Toggles a negative clock edge in pyverilator once."""
+    if clk2x_name in sim.io:
+        _write_signal(sim, clk_name, 0)
+        _write_signal(sim, clk2x_name, 1)
+        sim.eval()
+        _write_signal(sim, clk2x_name, 0)
+        sim.eval()
+    else:
+        _write_signal(sim, clk_name, 0)
+        sim.eval()
+
+def toggle_pos_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
+    """Toggles a positive clock edge in pyverilator once."""
+    if clk2x_name in sim.io:
+        _write_signal(sim, clk_name, 1)
+        _write_signal(sim, clk2x_name, 1)
+        sim.eval()
+        _write_signal(sim, clk2x_name, 0)
+        sim.eval()
+    else:
+        _write_signal(sim, clk_name, 1)
+        sim.eval()
+
 
 
 def wait_for_handshake(sim, ifname, basename="s_axi_control_", dataname="DATA"):
