@@ -160,9 +160,6 @@ def rtlsim_multi_io(
             inputs = io_dict["inputs"][inp]
             _write_signal(sim, inp + sname + "TVALID", 1 if len(inputs) > 0 else 0)
             _write_signal(sim, inp + sname + "TDATA", inputs[0] if len(inputs) > 0 else 0)
-            if _read_signal(sim, inp + sname + "TREADY") == 1 and _read_signal(sim, inp + sname + "TVALID") == 1:
-                inputs = inputs[1:]
-            io_dict["inputs"][inp] = inputs
 
         for outp in io_dict["outputs"]:
             outputs = io_dict["outputs"][outp]
@@ -173,7 +170,20 @@ def rtlsim_multi_io(
 
         if hook_preclk:
             hook_preclk(sim)
-        toggle_clk(sim)
+        
+        # Toggle half a clock to get to rising edge
+        _write_signal(sim, "ap_clk", 0)
+        sim.eval()
+        # Check for whether handshake will occur
+        for inp in io_dict["inputs"]:
+            inputs = io_dict["inputs"][inp]
+            # import pdb; pdb.set_trace()
+            if _read_signal(sim, inp + sname + "TREADY") == 1 and _read_signal(sim, inp + sname + "TVALID") == 1:
+                inputs = inputs[1:]
+            io_dict["inputs"][inp] = inputs
+        _write_signal(sim, "ap_clk", 1)
+        sim.eval()
+        
         if hook_postclk:
             hook_postclk(sim)
 
