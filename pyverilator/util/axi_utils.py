@@ -283,7 +283,7 @@ def toggle_neg_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     else:
         _write_signal(sim, clk_name, 0)
         sim.eval()
-        sim.add_to_vcd_trace()
+        if do_trace: sim.add_to_vcd_trace()
 
 def toggle_pos_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     """Toggles a positive clock edge in pyverilator once."""
