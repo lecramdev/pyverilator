@@ -240,19 +240,19 @@ def reset_rtlsim(sim, rst_name="ap_rst_n", active_low=True, clk_name="ap_clk"):
     """Sets reset input in pyverilator to zero, toggles the clock and set it
     back to one"""
     _write_signal(sim, rst_name, 0 if active_low else 1)
-    toggle_clk(sim, clk_name=clk_name)
-    toggle_clk(sim, clk_name=clk_name)
+    for i in range(0,2):
+        toggle_neg_edge(sim, clk_name=clk_name)
+        toggle_pos_edge(sim, clk_name=clk_name)
     _write_signal(sim, rst_name, 1 if active_low else 0)
-    toggle_clk(sim, clk_name=clk_name)
-    toggle_clk(sim, clk_name=clk_name)
+    for i in range(0,2):
+        toggle_neg_edge(sim, clk_name=clk_name)
+        toggle_pos_edge(sim, clk_name=clk_name)
 
 
 def toggle_clk(sim, clk_name="ap_clk"):
     """Toggles the clock input in pyverilator once."""
-    _write_signal(sim, clk_name, 0)
-    sim.eval()
-    _write_signal(sim, clk_name, 1)
-    sim.eval()
+    toggle_neg_edge(sim, clk_name=clk_name)
+    toggle_pos_edge(sim, clk_name=clk_name)
 
 
 def toggle_neg_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
