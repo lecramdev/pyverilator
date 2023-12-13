@@ -110,6 +110,8 @@ def rtlsim_multi_io(
     do_reset=False,
     hook_preclk=None,
     hook_postclk=None,
+    clk_name="ap_clk",
+    clk2x_name="ap_clk2x"
 ):
     """Runs the pyverilator simulation by passing the input values to the simulation,
     toggle the clock and observing the execution time. Function contains also an
@@ -139,8 +141,13 @@ def rtlsim_multi_io(
 
     """
 
+    # start both clocks from 1
+    _write_signal(sim, clk_name, 1)
+    if clk2x_name in sim.io:
+        _write_signal(sim, clk2x_name, 1)
+
     if trace_file != "":
-        sim.start_vcd_trace(trace_file)
+        sim.start_vcd_trace(trace_file, auto_tracing=False)
 
     if do_reset:
         reset_rtlsim(sim)
@@ -245,11 +252,7 @@ def _write_signal(sim, signal_name, signal_value):
 def reset_rtlsim(sim, rst_name="ap_rst_n", active_low=True, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     """Sets reset input in pyverilator to zero, toggles the clock and set it
     back to one"""
-    # start both clocks from 1
-    _write_signal(sim, clk_name, 1)
-    if clk2x_name in sim.io:
-        _write_signal(sim, clk2x_name, 1)
-    _write_signal(sim, rst_name, 0 if active_low else 1)
+    _write_signal(sim, rst_name, 0 if active_low else 1)    
     sim.eval()
     for i in range(0,2):
         toggle_neg_edge(sim, clk_name=clk_name)
@@ -268,28 +271,35 @@ def toggle_clk(sim, clk_name="ap_clk"):
 
 def toggle_neg_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     """Toggles a negative clock edge in pyverilator once."""
+    do_trace = not (sim.vcd_trace is None)
     if clk2x_name in sim.io:
         _write_signal(sim, clk2x_name, 0)
         sim.eval()
+        if do_trace: sim.add_to_vcd_trace()
         _write_signal(sim, clk_name, 0)
         _write_signal(sim, clk2x_name, 1)
         sim.eval()
-        
+        if do_trace: sim.add_to_vcd_trace()
     else:
         _write_signal(sim, clk_name, 0)
         sim.eval()
+        sim.add_to_vcd_trace()
 
 def toggle_pos_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     """Toggles a positive clock edge in pyverilator once."""
+    do_trace = not (sim.vcd_trace is None)
     if clk2x_name in sim.io:
         _write_signal(sim, clk2x_name, 0)
         sim.eval()
+        if do_trace: sim.add_to_vcd_trace()
         _write_signal(sim, clk_name, 1)        
         _write_signal(sim, clk2x_name, 1)
         sim.eval()
+        if do_trace: sim.add_to_vcd_trace()
     else:
         _write_signal(sim, clk_name, 1)
         sim.eval()
+        if do_trace: sim.add_to_vcd_trace()
 
 
 
