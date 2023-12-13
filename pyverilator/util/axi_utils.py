@@ -155,6 +155,8 @@ def rtlsim_multi_io(
     # output values after 100 cycles
     no_change_count = 0
 
+    toggle_clk(sim)
+
     while not (output_done):
         for inp in io_dict["inputs"]:
             inputs = io_dict["inputs"][inp]
