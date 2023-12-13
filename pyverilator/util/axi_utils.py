@@ -107,6 +107,7 @@ def rtlsim_multi_io(
     trace_file="",
     sname="_V_V_",
     liveness_threshold=10000,
+    do_reset=False,
     hook_preclk=None,
     hook_postclk=None,
 ):
@@ -140,6 +141,9 @@ def rtlsim_multi_io(
 
     if trace_file != "":
         sim.start_vcd_trace(trace_file)
+
+    if do_reset:
+        reset_rtlsim(sim)
 
     for outp in io_dict["outputs"]:
         _write_signal(sim, outp + sname + "TREADY", 1)
@@ -238,10 +242,15 @@ def _write_signal(sim, signal_name, signal_value):
     sim.io[signal_name] = signal_value
 
 
-def reset_rtlsim(sim, rst_name="ap_rst_n", active_low=True, clk_name="ap_clk"):
+def reset_rtlsim(sim, rst_name="ap_rst_n", active_low=True, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     """Sets reset input in pyverilator to zero, toggles the clock and set it
     back to one"""
+    # start both clocks from 1
+    _write_signal(sim, clk_name, 1)
+    if clk2x_name in sim.io:
+        _write_signal(sim, clk2x_name, 1)
     _write_signal(sim, rst_name, 0 if active_low else 1)
+    sim.eval()
     for i in range(0,2):
         toggle_neg_edge(sim, clk_name=clk_name)
         toggle_pos_edge(sim, clk_name=clk_name)
@@ -260,11 +269,12 @@ def toggle_clk(sim, clk_name="ap_clk"):
 def toggle_neg_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     """Toggles a negative clock edge in pyverilator once."""
     if clk2x_name in sim.io:
+        _write_signal(sim, clk2x_name, 0)
+        sim.eval()
         _write_signal(sim, clk_name, 0)
         _write_signal(sim, clk2x_name, 1)
         sim.eval()
-        _write_signal(sim, clk2x_name, 0)
-        sim.eval()
+        
     else:
         _write_signal(sim, clk_name, 0)
         sim.eval()
@@ -272,10 +282,10 @@ def toggle_neg_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
 def toggle_pos_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
     """Toggles a positive clock edge in pyverilator once."""
     if clk2x_name in sim.io:
-        _write_signal(sim, clk_name, 1)
-        _write_signal(sim, clk2x_name, 1)
-        sim.eval()
         _write_signal(sim, clk2x_name, 0)
+        sim.eval()
+        _write_signal(sim, clk_name, 1)        
+        _write_signal(sim, clk2x_name, 1)
         sim.eval()
     else:
         _write_signal(sim, clk_name, 1)
