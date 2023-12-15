@@ -834,8 +834,8 @@ class PyVerilator:
         # do two steps so the most recent value in GTKWave is more obvious
         self.curr_time += 5
         add_to_vcd_trace(self.vcd_trace, self.curr_time)
-        self.curr_time += 5
-        add_to_vcd_trace(self.vcd_trace, self.curr_time)
+        #self.curr_time += 5
+        #add_to_vcd_trace(self.vcd_trace, self.curr_time)
         # go ahead and flush on each vcd update
         self.flush_vcd_trace()
 
