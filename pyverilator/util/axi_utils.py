@@ -123,13 +123,22 @@ def rtlsim_multi_io(
 
     * sim: the PyVerilator object for simulation
     * io_dict: a dict of dicts in the following format:
-      {"inputs" : {"in0" : <input_data>, "in1" : <input_data>},
-      "outputs" : {"out0" : [], "out1" : []} }
+      {
+        # input streams to feed
+        "inputs" : {"in0" : [input_data..], "in1" : [input data.. ]},
+        # output streams to collect
+        "outputs" : {"out0" : [], "out1" : []},
+        # output streams to monitor (optional)
+        "monitor" : {"mon_out0" : []} 
+      }
       <input_data> is a list of Python arbitrary-precision ints indicating
       what data to push into the simulation, and the output lists are
-      similarly filled when the simulation is complete
+      similarly filled when the simulation is complete. The monitor list
+      is similar to the outputs but does not count towards simulation completion
+      (and is optional).
     * num_out_values: number of total values to be read from the simulation to
-      finish the simulation and return.
+      finish the simulation and return. Tranactions from monitor (as opposed to
+      output) streams are not counted towards this.
     * trace_file: vcd dump filename, empty string (no vcd dump) by default
     * sname: signal naming for streams, "_V_V_" by default, vitis_hls uses "_V_"
     * liveness_threshold: if no new output is detected after this many cycles,
@@ -190,6 +199,13 @@ def rtlsim_multi_io(
                 outputs = outputs + [_read_signal(sim, outp + sname + "TDATA")]
                 output_count += 1
             io_dict["outputs"][outp] = outputs
+
+        if "monitor" in io_dict.keys():
+            for mon_outp in io_dict["monitor"]:
+                mon_outputs = io_dict["monitor"][mon_outp]
+                if _read_signal(sim, mon_outp + "_TREADY") == 1 and _read_signal(sim, mon_outp + "_TVALID") == 1:
+                    mon_outputs = mon_outputs + [_read_signal(sim, mon_outp + "_TDATA")]
+                io_dict["monitor"][mon_outp] = mon_outputs
 
         # rising edge
         toggle_pos_edge(sim)
