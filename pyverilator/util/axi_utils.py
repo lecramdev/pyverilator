@@ -111,7 +111,7 @@ def rtlsim_multi_io(
     hook_preclk=None,
     hook_postclk=None,
     clk_name="ap_clk",
-    clk2x_name="ap_clk2x"
+    clk2x_name="ap_clk2x",
 ):
     """Runs the pyverilator simulation by passing the input values to the simulation,
     toggle the clock and observing the execution time. Function contains also an
@@ -129,7 +129,7 @@ def rtlsim_multi_io(
         # output streams to collect
         "outputs" : {"out0" : [], "out1" : []},
         # output streams to monitor (optional)
-        "monitor" : {"mon_out0" : []} 
+        "monitor" : {"mon_out0" : []}
       }
       <input_data> is a list of Python arbitrary-precision ints indicating
       what data to push into the simulation, and the output lists are
@@ -174,28 +174,34 @@ def rtlsim_multi_io(
 
     assert hook_postclk is None, "Needs re-implementation"
     assert hook_postclk is None, "Needs re-implementation"
-    
-    
-    toggle_clk(sim)
+
     for outp in io_dict["outputs"]:
         _write_signal(sim, outp + sname + "TREADY", 1)
-    comb_update_and_trace(sim)
-    
+
+    # Dictionary that will hold the signals to drive to DUT
+    signals_to_write = {}
+
     while not (output_done):
         # falling edge
-        toggle_neg_edge(sim)
+        toggle_neg_edge(sim, clk_name=clk_name, clk2x_name=clk2x_name)
         # examine signals, decide how to act based on that but don't update yet
         # so only _read_signal access in this block, no _write_signal
-        
+
         for inp in io_dict["inputs"]:
             inputs = io_dict["inputs"][inp]
-            if _read_signal(sim, inp + sname + "TREADY") == 1 and _read_signal(sim, inp + sname + "TVALID") == 1:
+            if (
+                _read_signal(sim, inp + sname + "TREADY") == 1
+                and _read_signal(sim, inp + sname + "TVALID") == 1
+            ):
                 inputs = inputs[1:]
             io_dict["inputs"][inp] = inputs
 
         for outp in io_dict["outputs"]:
             outputs = io_dict["outputs"][outp]
-            if _read_signal(sim, outp + sname + "TREADY") == 1 and _read_signal(sim, outp + sname + "TVALID") == 1:
+            if (
+                _read_signal(sim, outp + sname + "TREADY") == 1
+                and _read_signal(sim, outp + sname + "TVALID") == 1
+            ):
                 outputs = outputs + [_read_signal(sim, outp + sname + "TDATA")]
                 output_count += 1
             io_dict["outputs"][outp] = outputs
@@ -203,22 +209,25 @@ def rtlsim_multi_io(
         if "monitor" in io_dict.keys():
             for mon_outp in io_dict["monitor"]:
                 mon_outputs = io_dict["monitor"][mon_outp]
-                if _read_signal(sim, mon_outp + "_TREADY") == 1 and _read_signal(sim, mon_outp + "_TVALID") == 1:
+                if (
+                    _read_signal(sim, mon_outp + "_TREADY") == 1
+                    and _read_signal(sim, mon_outp + "_TVALID") == 1
+                ):
                     mon_outputs = mon_outputs + [_read_signal(sim, mon_outp + "_TDATA")]
                 io_dict["monitor"][mon_outp] = mon_outputs
-
-        # rising edge
-        toggle_pos_edge(sim)
 
         # update signals based on decisions in previous block, but don't examine anything
         # so only _write_signal access in this block, no _read_signal
         for inp in io_dict["inputs"]:
             inputs = io_dict["inputs"][inp]
-            _write_signal(sim, inp + sname + "TVALID", 1 if len(inputs) > 0 else 0)
-            _write_signal(sim, inp + sname + "TDATA", inputs[0] if len(inputs) > 0 else 0)
+            signal_name = inp + sname
+            signals_to_write[signal_name + "TVALID"] = 1 if len(inputs) > 0 else 0
+            signals_to_write[signal_name + "TDATA"] = inputs[0] if len(inputs) > 0 else 0
 
-        # combinational logic update based on the updates we just did after rising edge
-        comb_update_and_trace(sim)
+        # rising edge
+        toggle_pos_edge(
+            sim, clk_name=clk_name, clk2x_name=clk2x_name, signals_to_write=signals_to_write
+        )
 
         total_cycle_count = total_cycle_count + 1
 
@@ -270,97 +279,67 @@ def _write_signal(sim, signal_name, signal_value):
     sim.io[signal_name] = signal_value
 
 
-def reset_rtlsim(sim, rst_name="ap_rst_n", active_low=True, clk_name="ap_clk", clk2x_name="ap_clk2x"):
+def reset_rtlsim(
+    sim, rst_name="ap_rst_n", active_low=True, clk_name="ap_clk", clk2x_name="ap_clk2x"
+):
     _write_signal(sim, rst_name, 0 if active_low else 1)
     for _ in range(2):
-        toggle_clk(sim)
-        comb_update_and_trace(sim)
-    _write_signal(sim, rst_name, 1 if active_low else 0)
-    for _ in range(2):
-        toggle_clk(sim)
-        comb_update_and_trace(sim)
+        toggle_clk(sim, clk_name, clk2x_name)
+
+    signals_to_write = {}
+    signals_to_write[rst_name] = 1 if active_low else 0
+    toggle_clk(sim, clk_name, clk2x_name, signals_to_write)
+    toggle_clk(sim, clk_name, clk2x_name)
 
 
 def toggle_neg_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
-    do_trace = not (sim.vcd_trace is None)
     if clk2x_name in sim.io:
         _write_signal(sim, clk_name, 0)
         _write_signal(sim, clk2x_name, 1)
-        sim.eval()
-        if do_trace:
-            sim.add_to_vcd_trace()
+        comb_update_and_trace(sim)
         _write_signal(sim, clk2x_name, 0)
-        sim.eval()
-        if do_trace:
-            sim.add_to_vcd_trace()
+        comb_update_and_trace(sim)
     else:
-        # falling edge
         _write_signal(sim, clk_name, 0)
-        sim.eval()
-        if do_trace:
-            sim.add_to_vcd_trace()
-        
-def toggle_pos_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
-    do_trace = not (sim.vcd_trace is None)
+        comb_update_and_trace(sim)
+
+
+def toggle_pos_edge(sim, clk_name="ap_clk", clk2x_name="ap_clk2x", signals_to_write={}):
     if clk2x_name in sim.io:
         _write_signal(sim, clk_name, 1)
         _write_signal(sim, clk2x_name, 1)
         sim.eval()
-        if do_trace:
-            sim.add_to_vcd_trace()  
+        # Write IO signals a delta cycle after rising edge
+        if bool(signals_to_write):  # if dict non-empty
+            for sig in signals_to_write.keys():
+                _write_signal(sim, sig, signals_to_write[sig])
+        comb_update_and_trace(sim)
+
         _write_signal(sim, clk2x_name, 0)
-        sim.eval()
+        comb_update_and_trace(sim)
     else:
-        # rising edge
         _write_signal(sim, clk_name, 1)
         sim.eval()
-        
+        # Write IO signals a delta cycle after rising edge
+        if bool(signals_to_write):  # if dict non-empty
+            for sig in signals_to_write.keys():
+                _write_signal(sim, sig, signals_to_write[sig])
+        comb_update_and_trace(sim)
+
+
 def comb_update_and_trace(sim):
     do_trace = not (sim.vcd_trace is None)
     sim.eval()
     if do_trace:
-        sim.add_to_vcd_trace()  
+        sim.add_to_vcd_trace()
 
-def toggle_clk(sim, clk_name="ap_clk"):
+
+def toggle_clk(sim, clk_name="ap_clk", clk2x_name="ap_clk2x", signals_to_write={}):
     """Toggles the clock input in pyverilator once."""
-    toggle_neg_edge(sim, clk_name=clk_name)
-    toggle_pos_edge(sim, clk_name=clk_name)
-
-
-def toggle_neg_edge_old(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
-    """Toggles a negative clock edge in pyverilator once."""
-    do_trace = not (sim.vcd_trace is None)
-    if clk2x_name in sim.io:
-        _write_signal(sim, clk2x_name, 0)
-        sim.eval()
-        if do_trace: sim.add_to_vcd_trace()
-        _write_signal(sim, clk_name, 0)
-        _write_signal(sim, clk2x_name, 1)
-        sim.eval()
-        if do_trace: sim.add_to_vcd_trace()
-    else:
-        sim.eval()
-        if do_trace: sim.add_to_vcd_trace()
-        _write_signal(sim, clk_name, 0)
-        
-
-def toggle_pos_edge_old(sim, clk_name="ap_clk", clk2x_name="ap_clk2x"):
-    """Toggles a positive clock edge in pyverilator once."""
-    do_trace = not (sim.vcd_trace is None)
-    if clk2x_name in sim.io:
-        _write_signal(sim, clk2x_name, 0)
-        sim.eval()
-        if do_trace: sim.add_to_vcd_trace()
-        _write_signal(sim, clk_name, 1)        
-        _write_signal(sim, clk2x_name, 1)
-        sim.eval()
-        if do_trace: sim.add_to_vcd_trace()
-    else:
-        sim.eval()
-        if do_trace: sim.add_to_vcd_trace()
-        _write_signal(sim, clk_name, 1)
-        
-
+    toggle_neg_edge(sim, clk_name=clk_name, clk2x_name=clk2x_name)
+    toggle_pos_edge(
+        sim, clk_name=clk_name, clk2x_name=clk2x_name, signals_to_write=signals_to_write
+    )
 
 
 def wait_for_handshake(sim, ifname, basename="s_axi_control_", dataname="DATA"):
@@ -378,7 +357,10 @@ def wait_for_handshake(sim, ifname, basename="s_axi_control_", dataname="DATA"):
     """
     ret = None
     while 1:
-        hs = _read_signal(sim, basename + ifname + "READY") == 1 and _read_signal(sim, basename + ifname + "VALID") == 1
+        hs = (
+            _read_signal(sim, basename + ifname + "READY") == 1
+            and _read_signal(sim, basename + ifname + "VALID") == 1
+        )
         try:
             ret = _read_signal(sim, basename + ifname + dataname)
         except Exception:
@@ -398,7 +380,10 @@ def multi_handshake(sim, ifnames, basename="s_axi_control_"):
         _write_signal(sim, basename + ifname + "VALID", 1)
     while len(ifnames) > 0:
         for ifname in ifnames:
-            if _read_signal(sim, basename + ifname + "READY") == 1 and _read_signal(sim, basename + ifname + "VALID") == 1:
+            if (
+                _read_signal(sim, basename + ifname + "READY") == 1
+                and _read_signal(sim, basename + ifname + "VALID") == 1
+            ):
                 done.append(ifname)
         toggle_clk(sim)
         for ifname in done:
@@ -521,7 +506,9 @@ def create_axi_mem_hook(ref_sim, aximm_ifname, mem_depth, mem_init_file="", trac
         toggle_clk(aximem_sim, clk_name="clk")
         # copy all AXI slave outputs to AXI master inputs
         for signal_name in slave_to_master:
-            sim.io[aximm_ifname + signal_name] = _read_signal(aximem_sim, aximem_ifname + signal_name)
+            sim.io[aximm_ifname + signal_name] = _read_signal(
+                aximem_sim, aximem_ifname + signal_name
+            )
         if trace_file != "":
             aximem_sim.flush_vcd_trace()
 
